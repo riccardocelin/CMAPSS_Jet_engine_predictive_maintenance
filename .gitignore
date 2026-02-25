@@ -143,8 +143,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-ml_env
-tf_env
 
 # Spyder project settings
 .spyderproject
