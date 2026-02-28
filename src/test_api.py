@@ -4,6 +4,9 @@ import numpy as np
 
 base_url = "http://127.0.0.1:8000"
 endpoint = "/predict"
+
+BATCH_PRED = True
+
 url = base_url + endpoint
 
 
@@ -49,10 +52,14 @@ def main():
     # load test data for api prediction
     data_batch = np.load(data_dir + "/data_test_api.npy")
 
-    for data in data_batch:
-        data_rsh = data[np.newaxis, ...]
-        response = predict(url, data_rsh)
-        print(f"Predicted RUL: {response['predicted_RUL']} | batch_size: {response['batch_size']}")
+    if BATCH_PRED:
+        response = predict(url, data_batch) # batched data
+        print(f"Predicted batched RUL: {response['predicted_RUL']} | batch_size: {response['batch_size']}")
+    else:
+        for data in data_batch:
+            data_rsh = data[np.newaxis, ...]
+            response = predict(url, data_rsh) # reshaped data (no batch)
+            print(f"Predicted RUL: {response['predicted_RUL']} | batch_size: {response['batch_size']}")
 
 
 if __name__ == "__main__":
