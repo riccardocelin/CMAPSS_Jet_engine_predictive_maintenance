@@ -1,0 +1,28 @@
+{
+  "data_path": "data/CMAPSSData",
+  "dataset_training_patterns": [
+    "train_FD001",
+    "train_FD002",
+    "train_FD003",
+    "train_FD004"
+  ],
+  "dataset_test_patterns": [
+    "test_FD001",
+    "test_FD002",
+    "test_FD003",
+    "test_FD004"
+  ],
+  "dataset_test_rul_patterns": [
+    "RUL_FD001",
+    "RUL_FD002",
+    "RUL_FD003",
+    "RUL_FD004"
+  ],
+  "dataset_processed_destination_path": "data/processed",
+  "max_rul": 125,
+  "y_col_name": "RUL",
+  "sequence_len": 10,
+  "roll_mean_wd": [5, 10, 15],
+  "is_sequence_modeling": true,
+  "dataset_version": "v1"
+}

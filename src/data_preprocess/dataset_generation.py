@@ -1,40 +1,76 @@
+import argparse
+import json
+import os
+from pathlib import Path
+
 import data_generation_fcn as data_gen
 import numpy as np
-import os
 
 
-DATA_PATH = "data/CMAPSSData"
-
-DATASET_TRAINING_PATTERNS = ['train_FD001', 'train_FD002', 'train_FD003', 'train_FD004']
-
-DATASET_TEST_PATTERNS = ['test_FD001', 'test_FD002', 'test_FD003', 'test_FD004']
-DATASET_TEST_RUL_PATTERNS = ['RUL_FD001', 'RUL_FD002', 'RUL_FD003', 'RUL_FD004']
-
-DATASET_PROCESSED_DESTINATION_PATH = "data/processed"
+DEFAULT_CONFIG_PATH = Path(__file__).with_name('dataset_generation_config.json')
 
 
+def load_config(config_path=DEFAULT_CONFIG_PATH):
+    with open(config_path, 'r', encoding='utf-8') as config_file:
+        config = json.load(config_file)
 
-#######################################################
-MAX_RUL = 125 # clipping value (max RUL value)
+    required_fields = [
+        'data_path',
+        'dataset_training_patterns',
+        'dataset_test_patterns',
+        'dataset_test_rul_patterns',
+        'dataset_processed_destination_path',
+        'max_rul',
+        'y_col_name',
+        'sequence_len',
+        'roll_mean_wd',
+        'is_sequence_modeling',
+        'dataset_version'
+    ]
+    missing_fields = [field for field in required_fields if field not in config]
+    if missing_fields:
+        raise KeyError(f"Missing config fields: {', '.join(missing_fields)}")
 
-Y_COL_NAME = 'RUL' # name for the y column
-
-SEQUENCE_LEN = 10 # time length of the sequence ONLY FOR SEQUENCE PREPROCESSING (DL modeling)
-ROLL_MEAN_WD = [5, 10, 15] # rolling mean windows ONLY FOR TABULAR PREPROCESSING (ML modeling)
-is_sequence_modeling = True # True: enable dataset preprocessing for sequence modeling, False: enable dataset preprocessing for tabular modeling
-
-dataset_version = 'v1'
-#######################################################
+    return config
 
 
-if is_sequence_modeling:
-    DATASET_PROCESSED_DESTINATION_PATH += '/sequence/' + dataset_version
-else:
-    DATASET_PROCESSED_DESTINATION_PATH += '/tabular/' + dataset_version
 
-prj_folder = os.path.abspath(os.curdir)
-DATASET_PROCESSED_DESTINATION_PATH = prj_folder + '/' + DATASET_PROCESSED_DESTINATION_PATH
-os.makedirs(DATASET_PROCESSED_DESTINATION_PATH, exist_ok=True)
+
+def build_runtime_parameters(config):
+    data_path = config['data_path']
+    dataset_training_patterns = config['dataset_training_patterns']
+    dataset_test_patterns = config['dataset_test_patterns']
+    dataset_test_rul_patterns = config['dataset_test_rul_patterns']
+    max_rul = config['max_rul']
+    y_col_name = config['y_col_name']
+    sequence_len = config['sequence_len']
+    roll_mean_wd = config['roll_mean_wd']
+    is_sequence_modeling = config['is_sequence_modeling']
+    dataset_version = config['dataset_version']
+
+    dataset_processed_destination_path = config['dataset_processed_destination_path']
+    if is_sequence_modeling:
+        dataset_processed_destination_path += '/sequence/' + dataset_version
+    else:
+        dataset_processed_destination_path += '/tabular/' + dataset_version
+
+    prj_folder = os.path.abspath(os.curdir)
+    dataset_processed_destination_path = prj_folder + '/' + dataset_processed_destination_path
+    os.makedirs(dataset_processed_destination_path, exist_ok=True)
+
+    return (
+        data_path,
+        dataset_training_patterns,
+        dataset_test_patterns,
+        dataset_test_rul_patterns,
+        dataset_processed_destination_path,
+        max_rul,
+        y_col_name,
+        sequence_len,
+        roll_mean_wd,
+        is_sequence_modeling,
+        dataset_version
+    )
 
 
 def feature_engineering_pipeline_tabular(df, windows=[5]):
@@ -79,19 +115,34 @@ def feature_engineering_pipeline_sequence(df, sequence_len=5, step_size=1, y_nam
     return np.array(X), np.array(features.columns.values.tolist()), np.array(y), np.array([y_name])
 
 
-def main():
+def main(config_path=DEFAULT_CONFIG_PATH):
+
+    config = load_config(config_path)
+    (
+        data_path,
+        dataset_training_patterns,
+        dataset_test_patterns,
+        dataset_test_rul_patterns,
+        dataset_processed_destination_path,
+        max_rul,
+        y_col_name,
+        sequence_len,
+        roll_mean_wd,
+        is_sequence_modeling,
+        dataset_version
+    ) = build_runtime_parameters(config)
 
     # # training sets transformation
-    for dataset in DATASET_TRAINING_PATTERNS:
+    for dataset in dataset_training_patterns:
 
         # load dataset
-        df = data_gen.load_dataset(DATA_PATH, dataset, data_gen.column_names)
+        df = data_gen.load_dataset(data_path, dataset, data_gen.column_names)
 
         # missing value management (replacement with previous value)
         df = data_gen.nan_management(df)
 
         # compute RUL feature
-        df = data_gen.compute_training_rul(df, MAX_RUL, Y_COL_NAME)
+        df = data_gen.compute_training_rul(df, max_rul, y_col_name)
 
         # drop zero variance sensors
         df, cols_to_drop = data_gen.drop_zero_variance_features(df)
@@ -99,28 +150,28 @@ def main():
         # feature engineering step
         if is_sequence_modeling: # saved as npz file
 
-            X_npArr, X_names_npArr, y_npArr, y_name_npArr = feature_engineering_pipeline_sequence(df, SEQUENCE_LEN, step_size=1, y_name=Y_COL_NAME) # returns a np array
-            file_fullname = DATASET_PROCESSED_DESTINATION_PATH + '/' + dataset + '_X_y_' + dataset_version
+            X_npArr, X_names_npArr, y_npArr, y_name_npArr = feature_engineering_pipeline_sequence(df, sequence_len, step_size=1, y_name=y_col_name) # returns a np array
+            file_fullname = dataset_processed_destination_path + '/' + dataset + '_X_y_' + dataset_version
             np.savez(file=file_fullname+'.npz', X=X_npArr, y=y_npArr, feature_names=X_names_npArr, y_name=y_name_npArr)
         
         else: # saved as separate csv files
 
-            df = feature_engineering_pipeline_tabular(df, ROLL_MEAN_WD)
-            df.loc[:, df.columns != Y_COL_NAME].to_csv(DATASET_PROCESSED_DESTINATION_PATH + '/' + dataset + '_X_' + dataset_version, encoding='utf-8', index=False)
-            df[Y_COL_NAME].to_csv(DATASET_PROCESSED_DESTINATION_PATH + '/' + dataset + '_y_' + dataset_version, encoding='utf-8', index=False)
+            df = feature_engineering_pipeline_tabular(df, roll_mean_wd)
+            df.loc[:, df.columns != y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_X_' + dataset_version, encoding='utf-8', index=False)
+            df[y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_y_' + dataset_version, encoding='utf-8', index=False)
 
     # test sets transformation
-    for dataset, rul_file in zip(DATASET_TEST_PATTERNS, DATASET_TEST_RUL_PATTERNS):
+    for dataset, rul_file in zip(dataset_test_patterns, dataset_test_rul_patterns):
 
         # load dataset
-        df = data_gen.load_dataset(DATA_PATH, dataset, data_gen.column_names)
+        df = data_gen.load_dataset(data_path, dataset, data_gen.column_names)
 
         # missing value management (replacement with previous value)
         df = data_gen.nan_management(df)
 
         # compute RUL feature
-        rul_at_last_available_cycle = data_gen.retrive_rul_from_rul_file(DATA_PATH, rul_file)
-        df = data_gen.compute_test_rul(df, rul_at_last_available_cycle, MAX_RUL, Y_COL_NAME)
+        rul_at_last_available_cycle = data_gen.retrive_rul_from_rul_file(data_path, rul_file)
+        df = data_gen.compute_test_rul(df, rul_at_last_available_cycle, max_rul, y_col_name)
 
         # drop zero variance sensors (same cols as in training set)
         df.drop(cols_to_drop, axis=1, inplace=True)
@@ -128,16 +179,24 @@ def main():
         # feature engineering step
         if is_sequence_modeling: # saved as npz file
 
-            X_npArr, X_names_npArr, y_npArr, y_name_npArr = feature_engineering_pipeline_sequence(df, SEQUENCE_LEN, step_size=1, y_name=Y_COL_NAME) # returns a np array
-            file_fullname = DATASET_PROCESSED_DESTINATION_PATH + '/' + dataset + '_X_y_' + dataset_version
+            X_npArr, X_names_npArr, y_npArr, y_name_npArr = feature_engineering_pipeline_sequence(df, sequence_len, step_size=1, y_name=y_col_name) # returns a np array
+            file_fullname = dataset_processed_destination_path + '/' + dataset + '_X_y_' + dataset_version
             np.savez(file=file_fullname+'.npz', X=X_npArr, y=y_npArr, feature_names=X_names_npArr, y_name=y_name_npArr)
         
         else: # saved as separate csv files
 
-            df = feature_engineering_pipeline_tabular(df, ROLL_MEAN_WD)
-            df.loc[:, df.columns != Y_COL_NAME].to_csv(DATASET_PROCESSED_DESTINATION_PATH + '/' + dataset + '_X_' + dataset_version, encoding='utf-8', index=False)
-            df[Y_COL_NAME].to_csv(DATASET_PROCESSED_DESTINATION_PATH + '/' + dataset + '_y_' + dataset_version, encoding='utf-8', index=False)
+            df = feature_engineering_pipeline_tabular(df, roll_mean_wd)
+            df.loc[:, df.columns != y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_X_' + dataset_version, encoding='utf-8', index=False)
+            df[y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_y_' + dataset_version, encoding='utf-8', index=False)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Generate processed datasets from CMAPSS raw data.')
+    parser.add_argument(
+        '--config',
+        default=str(DEFAULT_CONFIG_PATH),
+        help='Path to the dataset generation JSON configuration file.'
+    )
+    args = parser.parse_args()
+
+    main(config_path=args.config)
