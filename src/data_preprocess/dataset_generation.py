@@ -1,4 +1,3 @@
-import argparse
 import json
 import os
 from pathlib import Path
@@ -6,8 +5,8 @@ from pathlib import Path
 import data_generation_fcn as data_gen
 import numpy as np
 
-
-DEFAULT_CONFIG_PATH = Path(__file__).with_name('dataset_generation_config.json')
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / 'configs' / 'dataset_generation_config.local.json' # remember to create a new file copy from configs/dataset_generation_config.template.json
 
 
 def load_config(config_path=DEFAULT_CONFIG_PATH):
@@ -191,12 +190,4 @@ def main(config_path=DEFAULT_CONFIG_PATH):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Generate processed datasets from CMAPSS raw data.')
-    parser.add_argument(
-        '--config',
-        default=str(DEFAULT_CONFIG_PATH),
-        help='Path to the dataset generation JSON configuration file.'
-    )
-    args = parser.parse_args()
-
-    main(config_path=args.config)
+    main()
