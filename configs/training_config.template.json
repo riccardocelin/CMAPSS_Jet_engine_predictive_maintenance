@@ -13,6 +13,9 @@
         "dataset_tabular_y_name": "test_FD001_y_v1",
         "dataset_sequence_X_y_name": "test_FD001_X_y_v1"
     },
+    "mlflow_server_uri": "http://127.0.0.1:8080",
+    "mlflow_experiment_name": "CMAPSS Jet Engine simulation",
+    "mlflow_run_name": "random forest 5fold CV",
     "algorithm": "lstm",
     "random_state": 42
   },

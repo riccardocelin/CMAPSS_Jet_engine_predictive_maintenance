@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import os
 
 import mlflow
 import mlflow.sklearn
@@ -10,7 +11,7 @@ from sklearn.metrics import mean_absolute_error
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = str(PROJECT_ROOT) + "/configs/training_config.local.json"  # remember to create a new file copy from configs/training_config.template.json
-
+# bash to start mlflow server: mlflow ui --backend-store-uri ./mlruns --artifacts-destination ./mlruns --port 8080
 
 def flatten_dict(data, parent_key=""):
     flat = {}
@@ -20,7 +21,7 @@ def flatten_dict(data, parent_key=""):
             flat.update(flatten_dict(value, new_key))
         else:
             flat[new_key] = value
-    return flat
+    return dict(sorted(flat.items()))
 
 
 def log_params(params):
@@ -29,15 +30,6 @@ def log_params(params):
             mlflow.log_param(key, json.dumps(list(value)))
         else:
             mlflow.log_param(key, value)
-
-
-def print_mlflow_server_instructions():
-    print("\n[MLFLOW] To start a local MLflow tracking server:")
-    print(
-        "  mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns"
-    )
-    print("[MLFLOW] Then set the tracking URI before running training:")
-    print("  export MLFLOW_TRACKING_URI=http://127.0.0.1:5000\n")
 
 
 def load_config(path):
@@ -126,7 +118,8 @@ def train_random_forest(cfg, cfg_rf):
     mlflow.set_experiment(experiment_name)
 
     with mlflow.start_run(run_name=run_name):
-        log_params(flatten_dict({"common": cfg, "random_forest": cfg_rf}))
+        log_params(flatten_dict({"common": cfg}))
+        log_params(flatten_dict({"random_forest": cfg_rf}))
 
         pipeline = Pipeline(
             [
@@ -170,12 +163,10 @@ def train_random_forest(cfg, cfg_rf):
         mlflow.log_param("dataset_train_rows", X.shape[0])
         mlflow.log_param("dataset_test_rows", X_test.shape[0])
         mlflow.log_param("dataset_feature_count", X.shape[1])
+        mlflow.log_param("feature_names", json.dumps(X.columns.tolist()))
         mlflow.log_param("dataset_train_path", json.dumps(training_dataset_paths))
         mlflow.log_param("dataset_test_path", json.dumps(test_dataset_paths))
         mlflow.sklearn.log_model(grid_search.best_estimator_, artifact_path="model")
-
-        print(metrics_trn)
-        print(metrics_tst)
 
 
 def train_lstm(cfg, cfg_lstm):
@@ -194,7 +185,8 @@ def train_lstm(cfg, cfg_lstm):
     mlflow.set_experiment(experiment_name)
 
     with mlflow.start_run(run_name=run_name):
-        log_params(flatten_dict({"common": cfg, "lstm": cfg_lstm}))
+        log_params(flatten_dict({"common": cfg}))
+        log_params(flatten_dict({"lstm": cfg_lstm}))
 
         # GroupShuffleSplit per engine
         gss = GroupShuffleSplit(n_splits=1, test_size=cfg_lstm["train_val_ratio"], random_state=cfg["random_state"])
@@ -261,14 +253,23 @@ def train_lstm(cfg, cfg_lstm):
         mlflow.log_param("epochs_trained", len(history.history.get("loss", [])))
         mlflow.tensorflow.log_model(model, artifact_path="model")
 
-        print(metrics_trn)
-        print(metrics_tst)
 
+def main():
 
-def main() -> None:
-    print_mlflow_server_instructions()
     config = load_config(CONFIG_PATH)
     cfg = config["common"]  # common config
+
+    mlflow_server_uri = cfg.get("mlflow_server_uri", "http://127.0.0.1:8080")
+
+    try:
+        mlflow.set_tracking_uri(mlflow_server_uri)
+        print(f"[MLflow] Correct Server connection at: {mlflow_server_uri}")
+    except mlflow.exceptions.MlflowException:
+        # fallback lacl
+        local_mlflow_dir = os.path.join(PROJECT_ROOT, "mlruns")
+        os.makedirs(local_mlflow_dir, exist_ok=True)
+        mlflow.set_tracking_uri(local_mlflow_dir)
+        print(f"[MLflow] Server not reachable. Local backend at: {local_mlflow_dir}")
 
     algorithm = cfg["algorithm"].lower()
 

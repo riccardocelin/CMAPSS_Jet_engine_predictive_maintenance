@@ -213,3 +213,4 @@ data
 app/models
 dataset_generation_config.local.json
 training_config.local.json
+mlruns
