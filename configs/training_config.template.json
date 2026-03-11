@@ -1,0 +1,59 @@
+{
+  "common":{
+    "data_base_folder": "data/processed",
+    "data_type": "sequence",
+    "data_version": "v1",
+    "training":{
+        "dataset_tabular_X_name": "train_FD001_X_v1",
+        "dataset_tabular_y_name": "train_FD001_y_v1",
+        "dataset_sequence_X_y_name": "train_FD001_X_y_v1"
+    },
+    "test":{
+        "dataset_tabular_X_name": "test_FD001_X_v1",
+        "dataset_tabular_y_name": "test_FD001_y_v1",
+        "dataset_sequence_X_y_name": "test_FD001_X_y_v1"
+    },
+    "algorithm": "lstm",
+    "random_state": 42
+  },
+
+
+  "random_forest": {
+    "n_jobs": -1,
+    "n_splits_cv": 5,
+    "scoring": "neg_mean_absolute_error",
+    "verbose": 2,
+    "hyperparameters": {
+      "regressor__rf__n_estimators": [200, 500],
+      "regressor__rf__max_depth": [10, 20],
+      "regressor__rf__min_samples_leaf": [20],
+      "regressor__rf__max_features": [null]
+    }
+  },
+
+
+  "lstm": {
+    "train_val_ratio": 0.8,
+    "layers": [
+      {
+        "units": 64,
+        "dropout": 0.2
+      },
+      {
+        "units": 32,
+        "dropout": 0.0
+      }
+    ],
+    "learning_rate": 0.001,
+    "loss": "mae",
+    "metrics": ["mae"],
+    "epochs": 100,
+    "batch_size": 32,
+    "verbose": 2,
+    "early_stopping": {
+      "monitor": "val_loss",
+      "patience": 6,
+      "restore_best_weights": true
+    }
+  }
+}

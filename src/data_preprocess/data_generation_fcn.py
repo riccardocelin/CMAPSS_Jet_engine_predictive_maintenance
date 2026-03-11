@@ -15,6 +15,10 @@ def load_dataset(data_path, dataset, column_names):
     return df
 
 
+def sort_by_engine_and_cycle(df):
+    return df.sort_values(['engine_id', 'cycle']).reset_index(drop=True)
+
+
 def compute_training_rul(df, max_rul=150, y_name='RUL'):
     
     rul_data = df.groupby('engine_id')['cycle'].max().reset_index()

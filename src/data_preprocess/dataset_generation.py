@@ -74,7 +74,7 @@ def build_runtime_parameters(config):
 
 def feature_engineering_pipeline_tabular(df, windows=[5]):
 
-    df_eng = df.copy()
+    df_eng = data_gen.sort_by_engine_and_cycle(df)
 
     SENSORS = [col for col in df_eng.columns if col not in ['engine_id', 'RUL']]
 
@@ -93,24 +93,26 @@ def feature_engineering_pipeline_tabular(df, windows=[5]):
             df_eng[[sensor for sensor in SENSORS]].values - df_eng[[f'{sensor}_RollMean_{w}_Window' for sensor in SENSORS]].values
         )
 
-    return df_eng.drop(columns='engine_id')
+    return data_gen.nan_management(df_eng)
 
 
 def feature_engineering_pipeline_sequence(df, sequence_len=5, step_size=1, y_name='RUL'):
     X = []
     y = []
+
+    df = data_gen.sort_by_engine_and_cycle(df)
     engine_ids = df['engine_id'].unique()
     
     for engine_id in engine_ids:
         engine_data = df[df['engine_id'] == engine_id].sort_values('cycle')
-        features = engine_data.drop(columns=['engine_id', y_name])
+        features = engine_data.drop(columns=[y_name])
         y_col = engine_data[y_name]
         
         for start in range(0, len(engine_data) - sequence_len + 1, step_size):
             end = start + sequence_len
             X.append(features.values[start:end])
             y.append(y_col.values[start:end])
-    
+
     return np.array(X), np.array(features.columns.values.tolist()), np.array(y), np.array([y_name])
 
 
@@ -156,8 +158,8 @@ def main(config_path=DEFAULT_CONFIG_PATH):
         else: # saved as separate csv files
 
             df = feature_engineering_pipeline_tabular(df, roll_mean_wd)
-            df.loc[:, df.columns != y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_X_' + dataset_version, encoding='utf-8', index=False)
-            df[y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_y_' + dataset_version, encoding='utf-8', index=False)
+            df.loc[:, df.columns != y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_X_' + dataset_version + '.csv', encoding='utf-8', index=False)
+            df[y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_y_' + dataset_version + '.csv', encoding='utf-8', index=False)
 
     # test sets transformation
     for dataset, rul_file in zip(dataset_test_patterns, dataset_test_rul_patterns):
@@ -185,8 +187,8 @@ def main(config_path=DEFAULT_CONFIG_PATH):
         else: # saved as separate csv files
 
             df = feature_engineering_pipeline_tabular(df, roll_mean_wd)
-            df.loc[:, df.columns != y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_X_' + dataset_version, encoding='utf-8', index=False)
-            df[y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_y_' + dataset_version, encoding='utf-8', index=False)
+            df.loc[:, df.columns != y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_X_' + dataset_version + '.csv', encoding='utf-8', index=False)
+            df[y_col_name].to_csv(dataset_processed_destination_path + '/' + dataset + '_y_' + dataset_version + '.csv', encoding='utf-8', index=False)
 
 
 if __name__ == "__main__":
