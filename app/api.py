@@ -1,24 +1,14 @@
 from fastapi import FastAPI
+from pathlib import Path
 import mlflow.pyfunc
-import numpy as np
-import pandas as pd
 
-
-####################################################################################
-####################################################################################
-
-mlflow_uri = "http://127.0.0.1:8080"
-model_name = 'RF_RUL_estimator' # for now: only sequence .keras models are supported (LSTM trained with TF2.x)
-alias = "champion" # @champion for deployment (alias set in mlflow model registry)
-
-####################################################################################
-####################################################################################
-
-mlflow.set_tracking_uri(mlflow_uri)
+# NOTE: loading a model exported from mlflow local server to app/model is a workaround to avoid using local mlflow uri due to the fact that this demo project aim to deploy the model on cloud, in this case the choice of downloading the model in app/models is a tradeoff choice in order to maintain simplicity for the deployment while using mlflow model registry tool in localhost (local training)
 
 # Load the model version currently under the 'champion' alias
-model_uri = f"models:/{model_name}@{alias}"
-model = mlflow.pyfunc.load_model(model_uri)
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = str(BASE_DIR / "model")
+
+model = mlflow.pyfunc.load_model(MODEL_PATH)
 
 app = FastAPI()
 

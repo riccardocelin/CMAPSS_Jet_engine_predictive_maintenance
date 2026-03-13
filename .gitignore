@@ -214,3 +214,5 @@ app/models
 dataset_generation_config.local.json
 training_config.local.json
 mlruns
+app/model
+download_model_to_deploy.local.yaml
