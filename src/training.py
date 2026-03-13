@@ -110,8 +110,16 @@ def train_random_forest(cfg, cfg_rf):
     from sklearn.preprocessing import StandardScaler
 
     # load datasets
-    X, X_with_engine, y, training_dataset_paths = load_tabular_data(cfg, is_training=True)
-    X_test, _, y_test, test_dataset_paths = load_tabular_data(cfg, is_training=False)
+    X, X_with_engine, y, data_paths_training = load_tabular_data(cfg, is_training=True)
+    X_test, _, y_test, data_paths_test = load_tabular_data(cfg, is_training=False)
+
+    source_trn_X = data_paths_training["data_folder"] + '/' + data_paths_training["dataset_X_name"] + '.csv'
+    source_tst_X = data_paths_test["data_folder"] + '/' + data_paths_test["dataset_X_name"] + '.csv'
+    source_trn_y = data_paths_training["data_folder"] + '/' + data_paths_training["dataset_y_name"] + '.csv'
+    source_tst_y = data_paths_test["data_folder"] + '/' + data_paths_test["dataset_y_name"] + '.csv'
+    training_dataset = mlflow.data.from_pandas(df=pd.concat([X,y])) # mlflow log purpose
+    test_dataset = mlflow.data.from_pandas(df=pd.concat([X_test,y_test])) # mlflow log purpose
+
 
     experiment_name = cfg.get("mlflow_experiment_name", "CMAPSS_Training")
     run_name = cfg.get("mlflow_run_name", "random_forest")
@@ -153,8 +161,8 @@ def train_random_forest(cfg, cfg_rf):
         y_test_pred = grid_search.predict(X_test)
         mae_cv_tst = mean_absolute_error(y_test, y_test_pred)
 
-        metrics_trn = {"Training set": training_dataset_paths, "MAE VAL": mae_cv_trn}
-        metrics_tst = {"Test set": test_dataset_paths, "MAE TST": mae_cv_tst}
+        metrics_trn = {"Training set": data_paths_training, "MAE VAL": mae_cv_trn}
+        metrics_tst = {"Test set": data_paths_test, "MAE TST": mae_cv_tst}
 
         # mlflow logs
         mlflow.log_metric("mae_val", mae_cv_trn)
@@ -164,8 +172,14 @@ def train_random_forest(cfg, cfg_rf):
         mlflow.log_param("dataset_test_rows", X_test.shape[0])
         mlflow.log_param("dataset_feature_count", X.shape[1])
         mlflow.log_param("feature_names", json.dumps(X.columns.tolist()))
-        mlflow.log_param("dataset_train_path", json.dumps(training_dataset_paths))
-        mlflow.log_param("dataset_test_path", json.dumps(test_dataset_paths))
+        mlflow.log_param("dataset_train_path", json.dumps(data_paths_training))
+        mlflow.log_param("dataset_test_path", json.dumps(data_paths_test))
+        mlflow.log_input(training_dataset, context="training")
+        mlflow.log_input(test_dataset, context="test")
+        mlflow.log_artifact(source_trn_X, artifact_path="datasets")
+        mlflow.log_artifact(source_tst_X, artifact_path="datasets")
+        mlflow.log_artifact(source_trn_y, artifact_path="datasets")
+        mlflow.log_artifact(source_tst_y, artifact_path="datasets")
         mlflow.sklearn.log_model(grid_search.best_estimator_, artifact_path="model")
 
 
@@ -179,6 +193,11 @@ def train_lstm(cfg, cfg_lstm):
 
     X, X_with_engine, y, idx_engine_id, data_paths_training, variable_names = load_sequence_data(cfg, is_training=True)
     X_test, _, y_test, _, data_paths_test, _ = load_sequence_data(cfg, is_training=False)
+
+    source_trn = data_paths_training["data_folder"] + '/' + data_paths_training["dataset_X_y_name"] + '.npz'
+    source_tst = data_paths_test["data_folder"] + '/' + data_paths_test["dataset_X_y_name"] + '.npz'
+    training_dataset = mlflow.data.from_numpy(X, targets=y, source=source_trn) # mlflow log purpose
+    test_dataset = mlflow.data.from_numpy(X_test, targets=y_test, source=source_tst) # mlflow log purpose
 
     experiment_name = cfg.get("mlflow_experiment_name", "CMAPSS_Training")
     run_name = cfg.get("mlflow_run_name", "lstm")
@@ -250,6 +269,10 @@ def train_lstm(cfg, cfg_lstm):
         mlflow.log_param("feature_names", json.dumps(variable_names["feature_names_X"]))
         mlflow.log_param("dataset_train_path", json.dumps(data_paths_training))
         mlflow.log_param("dataset_test_path", json.dumps(data_paths_test))
+        mlflow.log_input(training_dataset, context="training")
+        mlflow.log_input(test_dataset, context="test")
+        mlflow.log_artifact(source_trn, artifact_path="datasets")
+        mlflow.log_artifact(source_tst, artifact_path="datasets")
         mlflow.log_param("epochs_trained", len(history.history.get("loss", [])))
         mlflow.tensorflow.log_model(model, artifact_path="model")
 
