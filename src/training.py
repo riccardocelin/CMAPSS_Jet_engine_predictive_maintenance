@@ -46,7 +46,7 @@ def load_tabular_data(cfg, is_training=True):
     else:
         label = "test"
 
-    # load training dataset
+    # load dataset
     data_folder = cfg["data_base_folder"] + "/" + cfg["data_type"] + "/" + cfg["data_version"]
     dataset_X_name = cfg[label]["dataset_tabular_X_name"]
     dataset_y_name = cfg[label]["dataset_tabular_y_name"]
@@ -73,7 +73,7 @@ def load_sequence_data(cfg, is_training=True):
     else:
         label = "test"
 
-    # load training dataset
+    # load dataset
     data_folder = cfg["data_base_folder"] + "/" + cfg["data_type"] + "/" + cfg["data_version"]
     dataset_X_y_name = cfg[label]["dataset_sequence_X_y_name"]
 
@@ -180,7 +180,7 @@ def train_random_forest(cfg, cfg_rf):
         mlflow.log_artifact(source_tst_X, artifact_path="datasets")
         mlflow.log_artifact(source_trn_y, artifact_path="datasets")
         mlflow.log_artifact(source_tst_y, artifact_path="datasets")
-        mlflow.sklearn.log_model(grid_search.best_estimator_, artifact_path="model")
+        mlflow.sklearn.log_model(grid_search.best_estimator_, artifact_path="model", registered_model_name="RF_RUL_estimator")
 
 
 def train_lstm(cfg, cfg_lstm):
@@ -274,7 +274,7 @@ def train_lstm(cfg, cfg_lstm):
         mlflow.log_artifact(source_trn, artifact_path="datasets")
         mlflow.log_artifact(source_tst, artifact_path="datasets")
         mlflow.log_param("epochs_trained", len(history.history.get("loss", [])))
-        mlflow.tensorflow.log_model(model, artifact_path="model")
+        mlflow.tensorflow.log_model(model, artifact_path="model", registered_model_name="LSTM_RUL_estimator")
 
 
 def main():
