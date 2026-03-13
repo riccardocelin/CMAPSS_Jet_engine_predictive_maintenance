@@ -19,6 +19,10 @@ The target variable is `RUL`, computed per engine cycle and optionally clipped b
 
 ## Repository structure
 
+Files 'example_training_ML.ipynb' and 'example_training_TF.ipynb' provides sample notebooks for the training pipeline for the CV-tuned RF model and for the LSTM model with some useful images.
+Those files are only for example purpose only.
+The structure of the project is explained below.
+
 - `src/data_preprocess/dataset_generation.py`  
   End-to-end dataset preparation (load raw files, compute RUL, feature engineering, save processed artifacts).
 - `src/data_preprocess/data_generation_fcn.py`  
