@@ -23,3 +23,10 @@ local_path = mlflow.artifacts.download_artifacts(model_uri)
 
 shutil.copytree(local_path, output_dir, dirs_exist_ok=True)
 
+# manual add of 'uvicorn' requirements when copying from mlflow artifacts
+with open(output_dir+'/requirements.txt', 'a') as f:
+    f.write('\n')
+    f.write('uvicorn\n')
+    f.write('fastapi\n')
+
+

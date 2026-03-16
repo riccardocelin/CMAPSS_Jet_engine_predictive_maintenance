@@ -92,11 +92,7 @@ Use MLflow on **port 8080**.
 
 ### Start local MLflow server
 ```bash
-mlflow server \
-  --host 0.0.0.0 \
-  --port 8080 \
-  --backend-store-uri sqlite:///mlflow.db \
-  --default-artifact-root ./mlruns
+mlflow server --host 0.0.0.0 --port 8080 --backend-store-uri ./mlruns --artifacts-destination ./mlruns
 ```
 
 ### Point training to MLflow
@@ -142,3 +138,63 @@ docker compose up --build
 ```
 
 API will be available at `http://localhost:8000`.
+
+
+---
+
+## Azure Container Apps
+
+For the cloud deployment ACA has been chosen.
+Below, the bash command for the deployment of the champion model in the docker image previously built.
+
+resource group creation: rg-ml-app
+
+'''bash
+az group create \
+  --name rg-ml-app \
+  --location westeurope
+'''
+
+azure container registry creation: 
+az acr create --name mlopsdemoregistry  --resource-group rg-ml-app --sku Standard
+
+login:
+az acr login --name mlopsdemoregistry
+
+tag local image:
+docker tag cmapssjetenginerul-server mlopsdemoregistry.azurecr.io/cmapssrul:latest
+
+push local image
+docker push mlopsdemoregistry.azurecr.io/cmapssrul:latest
+
+creation container app environment (northeurope):
+az containerapp env create \
+  --name env-ml-app \
+  --resource-group rg-ml-app \
+  --location northeurope
+
+enable admin first:
+az acr update -n mlopsdemoregistry --admin-enabled true
+
+deploy on container app:
+az containerapp create \
+--name ml-api \
+--resource-group rg-ml-app \
+--environment env-ml-app \
+--image mlopsdemoregistry.azurecr.io/cmapssrul:latest \
+--registry-server mlopsdemoregistry.azurecr.io \
+--registry-username $(az acr credential show --name mlopsdemoregistry --query username -o tsv) \
+--registry-password $(az acr credential show --name mlopsdemoregistry --query passwords[0].value -o tsv) \
+--target-port 8000 \
+--ingress external \
+--cpu 1.0 \
+--memory 2.0Gi \
+--min-replicas 1 \
+--max-replicas 3
+
+retrieve public endpoint (https://ml-api.agreeableground-e95cbc53.northeurope.azurecontainerapps.io):
+az containerapp show \
+  --name ml-api \
+  --resource-group rg-ml-app \
+  --query properties.configuration.ingress.fqdn \
+  --output tsv

@@ -1,3 +1,6 @@
+# Docker compose file defines how to run the containers
+# bash cmd to build the image, create a container and publish port 8000:
+# --> cmd:''' docker compose up ''''
 # Comments are provided throughout this file to help you get started.
 # If you need more help, visit the Docker Compose reference guide at
 # https://docs.docker.com/go/compose-spec-reference/
