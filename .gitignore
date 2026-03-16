@@ -216,3 +216,4 @@ training_config.local.json
 mlruns
 app/model
 download_model_to_deploy.local.yaml
+service_test_config.local.json

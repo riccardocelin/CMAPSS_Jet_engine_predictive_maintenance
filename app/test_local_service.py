@@ -1,14 +1,33 @@
 import os
+import json
 import requests
 import numpy as np
 import pandas as pd
 
-base_url = "http://127.0.0.1:8000"
-endpoint = "/predict"
+CONFIG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+    "configs",
+    "service_test_config.local.json",
+)
 
-data_folder = "data/processed/sequence/v1/test_FD001_X_y_v1.npz"
-data_folder = "data/processed/tabular/v1/test_FD001_X_v1.csv"
-sequence_model = False # Sequence model: True -> test for LSTM models (sequence), model: False -> test for RF models (tabular)
+
+def _load_service_test_config(config_path=CONFIG_PATH):
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(
+            f"Missing config file: {config_path}. "
+            "Copy configs/service_test_config.template.json to configs/service_test_config.local.json and update it."
+        )
+
+    with open(config_path, "r", encoding="utf-8") as config_file:
+        return json.load(config_file)
+
+
+_SERVICE_TEST_CONFIG = _load_service_test_config()
+
+base_url = _SERVICE_TEST_CONFIG["base_url"]
+endpoint = _SERVICE_TEST_CONFIG["endpoint"]
+data_folder = _SERVICE_TEST_CONFIG["data_folder"]
+sequence_model = _SERVICE_TEST_CONFIG["sequence_model"]  # Sequence model: True -> test for LSTM models (sequence), model: False -> test for RF models (tabular)
 
 
 def predict(url="http://127.0.0.1:8000/predict", data=None, verbose=True, timeout=50):
