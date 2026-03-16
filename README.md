@@ -132,6 +132,9 @@ Local service test script configuration:
 - update endpoint/data path/model type as needed
 - run `python app/test_local_service.py`
 
+local endpoint (once local server has been started): http://127.0.0.1:8000
+cloud endpoint (azure deployed model): https://ml-api.agreeableground-e95cbc53.northeurope.azurecontainerapps.io
+
 ---
 
 ## Docker
