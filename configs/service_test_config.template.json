@@ -1,0 +1,6 @@
+{
+  "base_url": "http://127.0.0.1:8000",
+  "endpoint": "/predict",
+  "data_folder": "data/processed/tabular/v1/test_FD001_X_v1.csv",
+  "sequence_model": false
+}

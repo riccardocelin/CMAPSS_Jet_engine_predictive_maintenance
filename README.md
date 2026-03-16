@@ -127,6 +127,11 @@ Quick API test:
 python src/test_api.py
 ```
 
+Local service test script configuration:
+- copy `configs/service_test_config.template.json` to `configs/service_test_config.local.json`
+- update endpoint/data path/model type as needed
+- run `python app/test_local_service.py`
+
 ---
 
 ## Docker
