@@ -19,7 +19,7 @@ This repository demonstrates a full ML lifecycle:
 4. model export for deployment,
 5. online inference through FastAPI,
 6. containerization with Docker,
-7. cloud deployment to Azure Container Apps.
+7. local deployment in kubernetes (minikube)
 
 ---
 
@@ -167,6 +167,151 @@ docker run -p 8000:8000 rul-engine
 
 Local API URL:
 - `http://127.0.0.1:8000`
+
+---
+
+## Kubernetes deployment
+
+Minikube workflow for local deployment:
+```bash
+minikube start -p <cluster-name>
+kubectl apply -f k8s/   # Apply all Kubernetes manifests in the folder prj_fld/k8s (deployment.yaml, service.yaml, eventual configmap.yaml) - will be applied to active context
+minikube tunnel # enable tunneling for local host
+kubectl get svc # useful to get the ip:port after the tunneling (//127.0.0.1:80)
+python app/test_..._service.py # test model deployed in kubernetes
+```
+
+1. Useful commands
+```bash
+kubectl apply -f k8s/   # Apply all Kubernetes manifests in the folder prj_fld/k8s (deployment.yaml, service.yaml, eventual configmap.yaml)
+kubectl apply -f k8s/ --context=<cluster-name> # apply to a specific cluster-name
+minikube service <service-name>  # Open the Service in browser
+kubectl get all          # List all created resources (after 'kubectl apply -f k8s/')
+kubectl get pods         # List all running Pods
+kubectl get services     # List Services
+kubectl get deployments  # List Deployments
+```
+
+2. Pod inspection:
+```bash
+kubectl describe pod <pod-name>
+kubectl logs <pod-name>
+```
+
+3. Debug:
+```bash
+kubectl describe pod <pod-name> (example: kubectl describe pod cmapss-rul-api-764b6986-5mt5k)
+```
+
+Conceptual notes:
+- Deployment = guarantees N active Pods
+- Pod = containers wrapper
+- Service = routing through Pod via label
+- ConfigMap = external config
+the Service does not see the containters itself, but it does see the pod (via label match)
+
+In ML systesms, memory dimensioning is critical because each replica loads the model inside the RAM, too low limits can lead to outofmemory killing and system instability.
+Kubernetes thinks about CPU resources in cores or millicpu: CPU:100m means the the limit is 100 milli cpu, the the limit is 10% of a CPU.
+
+
+Understanding Ports in Kubernetes (Container → Pod → Service → External Access)
+When deploying an application on Kubernetes, it’s important to clearly understand how networking and ports work across different layers. A common source of confusion is assuming that the port your application uses internally is the same one you should use externally — this is not the case.
+
+Architecture Overview:
+The request flow looks like this:
+Client → Node → Service → Pod → Container
+Each layer has a specific role and may expose different ports.
+
+1. Container Level
+Inside the container, your application runs on a specific port.
+Example (FastAPI):
+uvicorn.run(app, host="0.0.0.0", port=8000)
+This means:
+The application listens on port 8000
+This port is only accessible inside the container (and pod)
+
+2. Pod Level
+A Pod is a wrapper around one or more containers.
+The Pod inherits the container port
+No additional port mapping happens here
+So:
+Pod port = 8000
+
+3. Service Level
+A Service exposes your Pods and enables communication within the cluster (and optionally outside).
+Example configuration:
+ports:
+  - port: 80
+    targetPort: 8000
+    nodePort: 30007
+
+Meaning of each field:
+targetPort: 8000
+The port on the container (your application)
+port: 80
+The internal Service port (used inside the Kubernetes cluster)
+nodePort: 30007
+The port exposed externally on the node (used by clients)
+
+4. Full Request Flow
+When you send a request:
+curl http://<NODE_IP>:30007/predict
+The request flows as follows:
+Client
+  ↓ (port 30007)
+Node (Minikube)
+  ↓
+Service (port 80)
+  ↓
+Pod (port 8000)
+  ↓
+Container (FastAPI app)
+
+Key Rule: Always use the NodePort (external port) to access your application from outside the cluster.
+
+
+
+In Kubernetes, a NodePort Service:
+exposes the service on a specific port on each node in the cluster
+Diagram:
+Client → <NodeIP>:<NodePort> → Service → Pod
+Example:
+192.168.49.2:30007
+Meaning:
+Each node in the cluster listens on port 30007
+Traffic is forwarded to the target pods by the Service
+
+
+In Kubernetes, a LoadBalancer Service:
+tells Kubernetes:
+“I want this service to be accessible from the outside via a public IP address”
+Logical flow:
+Client → LoadBalancer (public IP) → Node → Service → Pod
+The service is delegated to a cloud service, in minikube there is no cloud provider, so the LoadBalancer -> EXTERNAL-IP: pending
+
+The Minikube tunnel is a local process that:
+simulates a real LoadBalancer
+
+bash: Minikube tunnel
+- Minikube: creates a network route on your host
+- assigns an external IP address to the Service
+- forwards traffic from your host → cluster
+
+Actual flow with tunnel:
+Client (my Mac)
+   ↓
+External IP (assigned by Minikube)
+   ↓
+Tunnel (local process)
+   ↓
+Service → Pod
+
+Summary
+NodePort:
+Client → NodeIP:port
+LoadBalancer:
+Client → public and stable IP address
+
 
 ---
 

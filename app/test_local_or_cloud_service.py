@@ -28,6 +28,7 @@ base_url = _SERVICE_TEST_CONFIG["base_url"]
 endpoint = _SERVICE_TEST_CONFIG["endpoint"]
 data_folder = _SERVICE_TEST_CONFIG["data_folder"]
 sequence_model = _SERVICE_TEST_CONFIG["sequence_model"]  # Sequence model: True -> test for LSTM models (sequence), model: False -> test for RF models (tabular)
+loop_mod = _SERVICE_TEST_CONFIG["loop"] 
 
 
 def predict(url="http://127.0.0.1:8000/predict", data=None, verbose=True, timeout=50):
@@ -108,8 +109,12 @@ def main():
     test_response = requests.get(base_url + '/')
     print(f"Test response: {test_response}")
 
-    response = predict(url, X)
-    print(f"Predicted RUL: {response['predictions']}")
+    while True:
+        response = predict(url, X)
+        print(f"Predicted RUL: {response['predictions']}")
+
+        if not loop_mod:
+            break
 
 if __name__ == "__main__":
     main()

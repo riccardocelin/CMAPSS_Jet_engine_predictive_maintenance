@@ -1,0 +1,35 @@
+apiVersion: apps/v1  # API version for Deployment objects
+kind: Deployment     # Manages the lifecycle and replicas of Pods
+
+metadata:
+  name: cmapss-rul-api  # Logical name of the Deployment
+
+spec:
+  replicas: 2  # Desired state for Pod replicas
+
+  selector:
+    matchLabels:
+      app: rul-api  # Must match the labels in the Pod template ( = template.metadata.labels)
+
+  template:  # Defines the Pod specification (template for Pod creation, each replica is a copy of this template)
+    metadata: # metadata assigned to Pods
+      labels:
+        app: rul-api  # Label assigned to Pods (used by Deployment and Service to find them)
+
+    spec: # Specifies the containers inside the Pod (one pod can have multiple containers)
+      containers:
+        - name: rul-inference-container # Container name inside Pod (used for debug/logging)
+          image: ghcr.io/riccardocelin/cmapss-rul-engine:1.0.1  # Local Docker image (must be loaded into Minikube)
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8000  # Port exposed by the container (only for reference, the real routing is done in service.yaml)
+
+          # Resource limits are optional in local setups but good practice also in local minikube
+          resources:
+            requests:
+              cpu: "200m"      # Minimum CPU requested
+              memory: "512Mi"  # Minimum memory requested
+            limits:
+              cpu: "1000m"   # Maximum CPU allowed (if > -> throttling: k8s slows down the container)
+              memory: "2Gi"  # Maximum memory allowed (if > -> out of memory kill)

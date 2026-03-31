@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: cmapss-rul-api-service  # Name of the Service
+
+spec:
+  type: LoadBalancer  # Exposes the Service on a static port on the node (alternatives: NodePort, ClusterIP [default, internal], LoadBalancer [cloud, or simulated cloud with tunneling])
+
+  selector:
+    app: rul-api  # Selects Pods with this label (this is the glue between deployment and service: the Pod internal label must match)
+
+  ports:
+    - protocol: TCP
+      port: 80           # Internal Service port (internal to the cluster)
+      targetPort: 8000   # Container port where the app is running (real mapping, in deployment.yaml is a reference only)
+      #nodePort: 30007    # External port exposed by Minikube (only for NodePort service type)
