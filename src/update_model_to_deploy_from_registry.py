@@ -9,7 +9,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = str(PROJECT_ROOT) + "/configs/check_model_to_deploy.local.yaml"  # remember to create a new file copy from configs/download_model_to_deploy.template.yaml
-MODEL_FILE_YAML = str(PROJECT_ROOT) + "/model_deployed.yaml"  # this is the model file that will be used for deployment, it will be updated if the model in MLflow registry is updated
+MODEL_FILE_YAML = str(PROJECT_ROOT) + "/app/model/registered_model_meta"  # this is the model file that will be used for deployment, it will be updated if the model in MLflow registry is updated
 
 def main():
     with open(CONFIG_PATH) as f:
@@ -36,15 +36,17 @@ def main():
 
     if updated:
 
-        print(f"Model file in {MODEL_FILE_YAML} updated successfully. Copying to {output_dir}...")
+        print(f"Deployed model updated is out to date with the champion model in MLflow registry. Updating the model file and copying the new model artifact to the output directory for deployment...")
 
         model_uri = f"models:/{model_registry_name}@{alias}"
         model_artifact = mlflow.artifacts.download_artifacts(model_uri)
 
         # delete the old model file in the output directory before copying the new one
         shutil.rmtree(output_dir, ignore_errors=True)
+        print(f"Old model file in the output directory {output_dir} has been deleted.")
 
         shutil.copytree(model_artifact, output_dir, dirs_exist_ok=True)
+        print(f"New model artifact downloaded from MLflow registry and copied to the output directory {output_dir} successfully.")
 
         # manual add of 'uvicorn' requirements when copying from mlflow artifacts
         with open(output_dir+'/requirements.txt', 'a') as f:
@@ -52,9 +54,9 @@ def main():
             f.write('uvicorn\n')
             f.write('fastapi\n')
 
-        print("Model file copied successfully. Auto Git commit and push the changes...")
-        git_commit_and_push()
-        print("Auto Git commit and push completed (if configured, CI/CD pipeline will be triggered to build and deploy the updated model).")
+        print("Auto Git commit and push the changes. This will trigger the CI/CD pipeline to build and deploy the updated model (if configured).")
+        #git_commit_and_push()
+        print("Auto Git commit and push completed.")
 
     else:
         print("Model file is already up to date. No action needed.")
@@ -74,37 +76,25 @@ def check_and_update_model_file(model_file_yaml, champion_model):
     model_file_content = None
 
     if not os.path.exists(model_file_yaml):
-        raise FileNotFoundError(f"Model file not found in MLflow artifacts at {model_file_yaml}.")
+        print(f"Model file {model_file_yaml} does not exist. Model file will be created with the champion model info retrieved from mlflow.")
+        return True
 
     # read yaml file in model_file_yaml to get the actual model name and version
     with open(model_file_yaml, "r") as f:
         model_file_content = yaml.safe_load(f)
     
-    actual_name = model_file_content["model"]["registry_name"]
-    actual_version = model_file_content["model"]["version"]
+    actual_name = model_file_content["model_name"]
+    actual_version = model_file_content["model_version"]
 
     if actual_name != champion_name or actual_version != champion_version:
         print(f"Model file actual content: name={actual_name}, version={actual_version}")
         print(f"Champion model from MLflow registry: name={champion_name}, version={champion_version}")
-        print("Model file is outdated. It will be updated.")
-
-        # update the model file with the champion model info
-        model_file_content["previous"]["registry_name"]         = str(model_file_content["model"]["registry_name"])
-        model_file_content["previous"]["version"]               = str(model_file_content["model"]["version"])
-        model_file_content["previous"]["datetime_file_edit"]    = str(model_file_content["model"]["datetime_file_edit"])
-
-        model_file_content["model"]["registry_name"]        = champion_name
-        model_file_content["model"]["version"]              = champion_version
-        model_file_content["model"]["datetime_file_edit"]   = str(datetime.datetime.now().isoformat())
-
-        with open(model_file_yaml, "w") as f:
-            yaml.safe_dump(model_file_content, f)
-
+        print("Model file is outdated. It will be updated for new deployment.")
         return True
     else:
         print("Model file is already up to date.")
         return False
-    
+
 
 def git_commit_and_push():
     """

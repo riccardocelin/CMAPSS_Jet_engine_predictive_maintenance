@@ -19,8 +19,8 @@ spec:
     spec: # Specifies the containers inside the Pod (one pod can have multiple containers)
       containers:
         - name: rul-inference-container # Container name inside Pod (used for debug/logging)
-          image: ghcr.io/riccardocelin/cmapss-rul-engine:1.0.2-RFv1  # Local Docker image (must be loaded into Minikube)
-          imagePullPolicy: Always
+          image: ghcr.io/riccardocelin/cmapss-rul-engine:0e508d7-RFv1  # Local Docker image (must be loaded into Minikube)
+          imagePullPolicy: IfNotPresent
 
           ports:
             - containerPort: 8000  # Port exposed by the container (only for reference, the real routing is done in service.yaml)
