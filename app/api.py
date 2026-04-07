@@ -34,7 +34,7 @@ model_ready = False
 class DataInstance(BaseModel):
     inputs: List[Any]
 
-@app.lifespan("startup")
+@app.on_event("startup")
 def load_model_on_startup():
     global model, model_ready
     model = mlflow.pyfunc.load_model(MODEL_PATH)
