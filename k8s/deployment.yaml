@@ -33,20 +33,27 @@ spec:
           ports:
             - containerPort: 8000  # Port exposed by the container (only for reference, the real routing is done in service.yaml)
 
+          startupProbe: # Checks if the container has started successfully -> total possible time for startup = failureThreshold * periodSeconds(used by Kubernetes to determine if the container is still starting up or has failed to start, especially important for ML models that might take time to load)
+            httpGet:
+              path: /ready
+              port: 8000
+            failureThreshold: 30 # If 30 consecutive checks fail -> mark the container as failed (this is a common setting for ML models that might take time to start, but can be tuned based on the expected startup time and stability of the application)
+            periodSeconds: 5 # Check every 5 seconds (this is a common setting, but can be tuned based on the expected startup time and stability of the application)
+
           readinessProbe: # Checks if the container is ready to receive traffic (used by Service to route traffic only to ready Pods)
             httpGet:
-              path: /health # Health endpoint defined in FastAPI (app/api.py)
+              path: /ready # Health endpoint defined in FastAPI (app/api.py)
               port: 8000 # Port exposed by the container
-            initialDelaySeconds: 20 # Wait a few seconds before starting readiness checks to allow the application to start
-            periodSeconds: 10 # Check every 10 seconds
+            initialDelaySeconds: 5 # Wait a few seconds before starting readiness checks to allow the application to start
+            periodSeconds: 5 # Check every 5 seconds
             failureThreshold: 3 # If 3 consecutive checks fail -> mark the container as not ready (this is a common setting, but can be tuned based on the expected startup time and stability of the application)
 
           livenessProbe: # Checks if the container is alive (if fails -> restart the container, used by Kubernetes to ensure the application is running)
             httpGet:
-              path: /health
+              path: /live
               port: 8000
-            initialDelaySeconds: 15 # Wait longer before starting liveness checks to allow the application to fully start (especially important for ML models that might take time to load)
-            periodSeconds: 5 # Check every 5 seconds
+            initialDelaySeconds: 10 # Wait longer before starting liveness checks to allow the application to fully start (especially important for ML models that might take time to load)
+            periodSeconds: 10 # Check every 10 seconds
             failureThreshold: 3 # If 3 consecutive checks fail -> restart the container (this is a common setting, but can be tuned based on the expected startup time and stability of the application)
 
           # Resource limits are optional in local setups but good practice also in local minikube
