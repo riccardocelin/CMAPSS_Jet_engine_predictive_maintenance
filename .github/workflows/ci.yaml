@@ -2,9 +2,13 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - './app/**'
   push:
     branches:
       - main
+    paths:
+      - './app/**'
 
 permissions:
   contents: read
