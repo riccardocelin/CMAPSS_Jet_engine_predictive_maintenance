@@ -9,6 +9,6 @@ set -e
 
 echo ">> Deploying to Kubernetes using local k8s manifest config..."
 
-kubectl apply -f k8s/ deployment.yaml
+kubectl apply -f k8s/deployment.yaml
 
 echo "<< Deployment applied successfully"
